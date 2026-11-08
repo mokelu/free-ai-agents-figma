@@ -1,4 +1,5 @@
 {
+  "id": "34d0144d-3e8b-415c-827e-aab2c26be77b",
   "name": "Remove BG + AI Chat",
   "api": "1.0.0",
   "main": "code.js",
