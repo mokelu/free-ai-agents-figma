@@ -1,0 +1,1225 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><style>
+  :root { --bg:#1e1e1e; --card:#2a2a2a; --bubble:#333333; --line:#2b2b2b; --txt:#e8e8e8; --dim:#9b9b9b; --faint:#8a8a8a; --accent:#0d99ff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:"Inter","Segoe UI",-apple-system,system-ui,sans-serif; font-size:13px; display:flex; flex-direction:column; overflow:hidden; }
+  button { font-family: inherit; }
+
+  /* ---------- header ---------- */
+  header { display:flex; align-items:center; gap:2px; padding:7px 8px; border-bottom:1px solid var(--line); flex:none; }
+  .title { flex:1; margin:0 4px; line-height:1.2; min-width:0; }
+  .title strong { font-size:13px; font-weight:600; color:#fff; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .qpill { background:none; border:0; padding:0; margin-top:1px; color:var(--faint); font-size:10.5px; cursor:pointer; display:block; }
+  .qpill:hover { color:#c9c9c9; }
+  .qpill.out { color:#e5484d; }
+  .minlink { background:#262626; border:1px solid #3a3a3a; border-radius:7px; padding:2px 8px; margin-top:3px; color:var(--faint); font-size:10px; cursor:pointer; display:inline-block; text-align:left; }
+  .minlink:hover { color:#c9c9c9; background:#2c2c2c; }
+  .hbtn { background:none; border:0; color:#c9c9c9; padding:5px; border-radius:6px; cursor:pointer; display:flex; flex:none; }
+  .hbtn:hover { background:#2c2c2c; }
+  .hbtn svg { width:18px; height:18px; display:block; }
+
+  /* ---------- log ---------- */
+  #log { position:relative; flex:1; overflow-y:auto; padding:10px 16px 6px; scrollbar-width:none; -ms-overflow-style:none; }
+  #log::-webkit-scrollbar { display:none; width:0; height:0; }
+  .turn-user { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:12px 0 14px; }
+  .bubble { background:var(--bubble); color:#fff; padding:9px 14px; border-radius:20px; max-width:72%; font-size:13px; white-space:pre-wrap; word-break:break-word; }
+  .bubble img { max-width:160px; max-height:160px; border-radius:12px; display:block; }
+  .avatar { width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex:none; }
+  .turn-ai { margin:6px 0 2px; font-size:13px; line-height:1.55; color:var(--txt); white-space:pre-wrap; word-break:break-word; }
+  .turn-ai.typing { color:var(--faint); }
+  .msg-actions { display:flex; align-items:center; gap:16px; margin:8px 0 12px; }
+  .mact { background:none; border:0; padding:2px; cursor:pointer; color:#9f9f9f; display:flex; }
+  .mact:hover { color:#e5e5e5; }
+  .mact svg { width:15px; height:15px; }
+  .spacer { flex:1; }
+  .sys { color:var(--faint); font-size:11.5px; margin:4px 0; white-space:pre-line; }
+  .sys .uacts-copy { color:#c9c9c9; }
+
+  /* thinking indicator (family pattern) */
+  .thinking { display:flex; align-items:center; gap:8px; color:var(--faint); margin:6px 0 2px; font-size:12.5px; }
+  .spin { display:inline-block; box-sizing:border-box; width:14px; height:14px; flex:none; border-radius:50%; border:2px solid #3a3a3a; border-top-color:#8b7cff; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration:2.4s; } }
+
+  /* user message actions */
+  .uacts { justify-content:flex-end; margin:-10px 0 12px; }
+
+  /* answering model label */
+  .msub { color:var(--faint); font-size:10.5px; white-space:nowrap; }
+
+  /* jump-to-latest pill (only when the user has scrolled up) */
+  #jmp { position:fixed; bottom:84px; right:14px; display:none; background:#2c2c2c; border:1px solid #3a3a3a; color:#e5e5e5; border-radius:999px; padding:5px 12px; font-size:11.5px; cursor:pointer; z-index:40; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  #jmp:hover { background:#333; }
+  #jmp.show { display:block; }
+
+  /* hygiene card */
+  .hcard { background:#262626; border:1px solid #333; border-radius:12px; padding:10px 12px; margin:4px 0 12px; font-size:12px; color:#d8d8d8; }
+  .fixline { display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .fixline input { accent-color: var(--accent); }
+  .chips { margin:4px 0 8px; }
+  .chip { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px; vertical-align:-1px; border:1px solid rgba(255,255,255,.15); }
+  .apply { background:#3a3a3a; color:#fff; border:0; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; margin-top:6px; }
+  .apply:hover { background:#454545; }
+
+  /* ---------- history view ---------- */
+  #hist { flex:1; overflow-y:auto; padding:10px 12px; display:none; }
+  #hist.open { display:block; }
+  /* history view hides the composer entirely */
+  #hist.open ~ .composer { display:none; }
+
+  #hist .hrow { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  #hist h3 { margin:0; font-size:13px; font-weight:600; color:#fff; flex:1; }
+  #hist .hnew { background:#5e37e6; color:#fff; border:0; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+  #hist .hitem { width:100%; text-align:left; background:#262626; border:0; border-radius:10px; padding:10px 12px; margin:6px 0; color:var(--txt); cursor:pointer; }
+  #hist .hitem:hover { background:#2f2f2f; }
+  #hist .hitem .ht { font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #hist .hitem .hd { font-size:10.5px; color:var(--faint); margin-top:3px; }
+  #hist .hempty { color:var(--faint); font-size:12px; margin-top:14px; text-align:center; }
+
+  /* ---------- menus ---------- */
+  .menu { position:fixed; top:46px; background:#2c2c2c; border:1px solid #3a3a3a; border-radius:10px; padding:6px; box-shadow:0 10px 28px rgba(0,0,0,.55); z-index:50; width:236px; display:none; }
+  .menu.open { display:block; }
+  #moreMenu { right:10px; } #modelMenu { left:14px; width:242px; max-height:60vh; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; } #modelMenu::-webkit-scrollbar { display:none; } #qpopMenu { right:96px; width:210px; }
+  .menu button { display:block; width:100%; text-align:left; background:none; border:0; color:var(--txt); padding:8px 10px; border-radius:6px; font-size:12.5px; cursor:pointer; }
+  .menu button:hover { background:#3a3a3a; }
+  .menu .note { color:var(--faint); font-size:11px; padding:2px 10px 6px; }
+  .menu hr { border:0; border-top:1px solid #3a3a3a; margin:5px 4px; }
+  .menu .qrow { display:flex; justify-content:space-between; gap:10px; padding:4px 10px; font-size:12px; color:var(--txt); }
+  .menu .qrow .qv { color:var(--faint); }
+  /* model menu: each model sits in its own quiet bg region */
+  .mgroup { background:#232323; border:1px solid #2f2f2f; border-radius:10px; padding:3px; margin:5px 6px; }
+  .mgroup.on { border-color:#5e37e6; background:#262436; }
+  .mgroup.dis { opacity:.55; }
+  .mrowname { display:block; width:100%; text-align:left; background:none; border:0; color:#e8e8e8; font-size:12px; padding:7px 8px; border-radius:7px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mrowname:hover { background:#2d2d2d; }
+  #modelMenu .mrowname + .mrowname { margin-top:1px; }
+  .mrowname.on { color:#fff; font-weight:600; }
+  .mrowname .newb { margin-left:7px; font-size:8px; font-weight:700; letter-spacing:.5px; color:#b7a6ff; vertical-align:1px; }
+  /* thinking levels: one horizontal row inside the group, no label */
+  .effort { display:flex; align-items:stretch; gap:3px; padding:0 4px 3px 4px; }
+  .effort button { flex:1; min-width:0; background:rgba(255,255,255,.04); border:1px solid #343434; color:#bdbdbd; border-radius:6px; font-size:9.5px; padding:2px 0; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
+  .effort button:hover { border-color:#4a4a4a; color:#fff; }
+  .effort button.on { background:#5e37e6; border-color:#5e37e6; color:#fff; }
+
+  /* ---------- composer (low profile) ---------- */
+  .composer { flex:none; padding:6px 12px 10px; display:flex; flex-direction:column; gap:6px; }
+  .card { background:var(--card); border-radius:14px; padding:7px 10px; display:flex; flex-direction:column; gap:6px; }
+  #p { background:transparent; border:0; outline:none; color:var(--txt); font:inherit; font-size:13px; resize:none; height:21px; line-height:21px; padding:0 1px; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+  #p::-webkit-scrollbar { display:none; }
+  #p::placeholder { color:#a3a3a3; }
+  .crow { display:flex; align-items:center; gap:1px; }
+  .cbtn { background:none; border:0; color:#c9c9c9; cursor:pointer; padding:3px; display:flex; align-items:center; justify-content:center; border-radius:6px; }
+  .cbtn:hover { background:#383838; }
+  .cbtn svg { width:19px; height:19px; display:block; }
+  .cbtn.listening { color:#9ec5ff; background:rgba(13,153,255,.14); }
+  .globe.on { color:#9ec5ff; background:rgba(13,153,255,.14); }
+  .rgt { margin-left:auto; display:flex; align-items:center; gap:7px; }
+  .send { width:28px; height:28px; border-radius:50%; border:0; background:#4d4d4d; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none; }
+  .send:hover { background:#5a5a5a; }
+  .send:disabled { opacity:.4; cursor:default; }
+  .send svg { width:14px; height:14px; display:block; }
+
+  /* model selector — below the input card, bordered */
+  .mspot { display:flex; }
+  .mchip { background:#232323; border:1px solid #3a3a3a; border-radius:9px; color:#b9b9b9; font-size:11px; padding:4px 10px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .mchip:hover { background:#2c2c2c; color:#e5e5e5; }
+
+  /* ---------- markdown content ---------- */
+  .md { white-space: normal; }
+  .md p { margin: 0 0 10px; }
+  .md > :last-child { margin-bottom: 4px; }
+  .md h1, .md h2, .md h3, .md h4 { color:#fff; margin:14px 0 6px; line-height:1.3; }
+  .md h1 { font-size:16px; font-weight:700; }
+  .md h2 { font-size:14.5px; font-weight:600; }
+  .md h3, .md h4 { font-size:13px; font-weight:600; }
+  .md ul, .md ol { margin: 6px 0 10px; padding-left: 20px; }
+  .md li { margin: 3px 0; }
+  .md li input[type=checkbox] { accent-color: var(--accent); margin-right:5px; vertical-align:-2px; }
+  .md blockquote { border-left:3px solid #4d4d4d; padding:2px 0 2px 10px; margin:8px 0; color:#c9c9c9; }
+  .md hr { border:0; border-top:1px solid #3a3a3a; margin:12px 0; }
+  .md a { color:#6db2ff; text-decoration:none; word-break:break-word; }
+  .md a:hover { text-decoration:underline; }
+  .md code { background:#1e1e1e; border:1px solid #3a3a3a; border-radius:5px; padding:1px 5px; font:11.5px ui-monospace,Consolas,monospace; word-break:break-word; }
+  .md pre { position:relative; background:#191919; border:1px solid #3a3a3a; border-radius:10px; padding:10px 36px 10px 12px; margin:8px 0 12px; overflow-x:auto; white-space:pre; }
+  .md pre code { background:none; border:0; border-radius:0; padding:0; font-size:11.5px; color:#e3e3e3; }
+  .md table { border-collapse:collapse; margin:8px 0 12px; font-size:12px; max-width:100%; display:block; overflow-x:auto; }
+  .md th, .md td { border:1px solid #3a3a3a; padding:5px 10px; text-align:left; vertical-align:top; }
+  .md th { background:#262626; color:#fff; font-weight:600; }
+  .md img { max-width:100%; max-height:320px; border-radius:10px; margin:6px 0; display:block; }
+  .imgfall { display:inline-block; background:#262626; border:1px solid #3a3a3a; border-radius:8px; padding:5px 10px; font-size:11.5px; cursor:pointer; }
+  .cbtn-code { position:absolute; top:5px; right:5px; }
+
+  /* ---------- agent tool cards ---------- */
+  .toolcard { background:#262626; border:1px solid #333; border-radius:12px; padding:9px 12px; margin:6px 0 12px; }
+  .toolhead { display:flex; align-items:center; gap:8px; color:#9ec5ff; font-size:12px; font-weight:600; }
+  .toolhead svg { width:14px; height:14px; flex:none; }
+  .toolout { margin-top:6px; font-size:12px; color:#cfcfcf; }
+
+  /* ---------- minimized strip ---------- */
+  #minbar { display:none; align-items:center; gap:8px; padding:0 10px; height:100%; cursor:default; }
+  body.mini header, body.mini #log, body.mini .composer, body.mini #hist { display:none; }
+  body.mini #minbar { display:flex; }
+  #minbar .mname { font-size:12px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #minbar .mstat { font-size:10px; color:var(--faint); margin-left:2px; }
+</style></head>
+<body>
+
+<div id="minbar">
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="1" y="1" width="22" height="22" rx="6" fill="#5e37e6"/>
+    <path d="M7 17V7h4.2a3.4 3.4 0 0 1 0 6.8H10V17H7.4Z" fill="#fff" opacity=".92"/>
+    <circle cx="16" cy="15.4" r="2" fill="#ffe06e"/>
+  </svg>
+  <span class="mname">Remove BG + AI Chat</span>
+  <span class="mstat" id="mstat"></span>
+  <button class="hbtn" id="restore" title="Maximize" style="margin-left:auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#c9c9c9" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</div>
+
+<header>
+  <div class="title">
+    <strong id="htitle">Remove BG + AI Chat</strong>
+    <button class="qpill" id="qpill" title="Free tokens left on this device - click for details"><span id="qpillTxt">Free tokens</span></button>
+    <button class="minlink" id="minBtn">minimize entire app</button>
+  </div>
+  <button class="hbtn" id="rmbgBtn" title="Remove background from the last attached image">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21H7z"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+  </button>
+  <button class="hbtn" id="ext" title="usefree.space">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6H5V6h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>
+  </button>
+  <button class="hbtn" id="more" title="Menu">
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+  </button>
+</header>
+
+<div id="log"></div>
+
+<div id="hist">
+  <div class="hrow">
+    <h3>History</h3>
+    <button class="hnew" id="hnew">New conversation</button>
+  </div>
+  <div id="histList"></div>
+</div>
+
+<div class="menu" id="moreMenu">
+  <button data-more="export">Export this chat</button>
+  <button data-more="history">Conversation history</button>
+</div>
+
+<div class="menu" id="modelMenu"></div>
+
+<div class="menu" id="qpopMenu"></div>
+
+<div class="composer">
+  <div class="card">
+    <textarea id="p" placeholder="Type something…"></textarea>
+    <div class="crow">
+      <button class="cbtn" id="plusBottom" title="Add image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="cbtn globe" id="globe" title="Web search (toggle)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>
+      </button>
+      <div class="rgt">
+        <button class="cbtn" id="mic" title="Voice input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+        </button>
+        <button class="send" id="send" title="Send" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="mspot">
+    <button class="mchip" id="modelBtn" title="Model"><span id="modelLabel">Auto</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9b9b9b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+  </div>
+</div>
+
+<input type="file" id="imgfile" accept="image/*" hidden>
+<button id="jmp">New reply ↓</button>
+
+<script>
+  const APP = "Remove BG + AI Chat";
+  const log = document.getElementById("log");
+  const p = document.getElementById("p");
+  const sendBtn = document.getElementById("send");
+  const micBtn = document.getElementById("mic");
+  const globeBtn = document.getElementById("globe");
+  const moreMenu = document.getElementById("moreMenu");
+  const modelMenu = document.getElementById("modelMenu");
+  const modelBtn = document.getElementById("modelBtn");
+  const modelLabel = document.getElementById("modelLabel");
+  const qpill = document.getElementById("qpill");
+  const qpillTxt = document.getElementById("qpillTxt");
+  const qpopMenu = document.getElementById("qpopMenu");
+  const htitle = document.getElementById("htitle");
+  const histView = document.getElementById("hist");
+  const histList = document.getElementById("histList");
+  const imgInput = document.getElementById("imgfile");
+  const jmpBtn = document.getElementById("jmp");
+  jmpBtn.onclick = () => { scrollToBottom(true); jumpPill(false); };
+  let typingEl = null;
+  let typingTick = null;
+  let webOn = false;
+
+  /* ---------- primitives ---------- */
+  function el(tag, cls, text) {
+    const d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text != null) d.textContent = text;
+    return d;
+  }
+  /* ---------- scroll policy: never teleport ---------- */
+  // "near the bottom" = user is following the chat; otherwise leave their position alone
+  function nearBottom() {
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 160;
+  }
+  function scrollToBottom(smooth) {
+    try { log.scrollTo({ top: log.scrollHeight, behavior: smooth ? "smooth" : "auto" }); }
+    catch (e) { log.scrollTop = log.scrollHeight; }
+  }
+  // reveal a newly appended block: bottom if it fits, its START if it taller than the pane
+  function revealNode(t) {
+    if (!t || !t.isConnected) { scrollToBottom(false); return; }
+    if (t.offsetHeight <= log.clientHeight - 48) { scrollToBottom(true); return; }
+    try { log.scrollTo({ top: Math.max(0, t.offsetTop - 12), behavior: "smooth" }); }
+    catch (e) { log.scrollTop = Math.max(0, t.offsetTop - 12); }
+  }
+  function jumpPill(show) {
+    document.getElementById("jmp").classList.toggle("show", show);
+  }
+  log.addEventListener("scroll", function () { jumpPill(!nearBottom()); }, false);
+  function sysMsg(text) {
+    const near = nearBottom();
+    log.appendChild(el("div", "sys", text));
+    if (near) scrollToBottom(false); else jumpPill(true);
+  }
+
+  const ICONS = {
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h9"/></svg>',
+    retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>',
+  };
+
+  /* ---------- token formatting (family standard) ---------- */
+  function fmtM(n) { const v = n / 1e6; return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + "m"; }
+  function fmtShort(n) {
+    if (n >= 1e6) return fmtM(n);
+    if (n >= 1e3) return Math.round(n / 1e3) + "k";
+    return String(Math.max(0, Math.round(n)));
+  }
+  function fmtNum(n) { return Math.max(0, Math.round(n)).toLocaleString(); }
+
+  /* ---------- conversation history (persisted via clientStorage in the sandbox) ---------- */
+  let sessions = [];
+  function pushSessions(list) {
+    sessions = list;
+    parent.postMessage({ pluginMessage: { type: "sess-set", list: sessions } }, "*");
+  }
+  let curSession = null;
+  function recordTurn(who, text) {
+    if (!curSession) {
+      curSession = { id: "s" + Date.now(), title: null, ts: Date.now(), turns: [] };
+    }
+    curSession.turns.push({ who: who, text: text });
+    if (!curSession.title && who === "u" && looksLikeTopic(text) && !isGreeting(text)) {
+      // first message that actually states a topic names the conversation (family behavior)
+      curSession.title = makeTitle(text) || null;
+      if (curSession.title) curSession.title = curSession.title;
+    }
+    curSession.ts = Date.now();
+    const i = sessions.findIndex((x) => x.id === curSession.id);
+    if (i >= 0) sessions[i] = curSession; else sessions.push(curSession);
+    if (sessions.length > 40) sessions = sessions.slice(-40);
+    pushSessions(sessions);
+    setHeaderTitle(curSession.title || null);
+  }
+  /* ---- family-standard title brain (from free-ai-agents) ---- */
+  var TITLE_STOP = new Set(["a", "an", "the", "and", "or", "but", "if", "then", "so", "to", "of", "in", "on", "at", "for", "with", "about", "from", "by", "as", "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "can", "could", "would", "should", "will", "shall", "may", "might", "must", "i", "me", "my", "mine", "we", "us", "our", "you", "your", "he", "she", "it", "they", "them", "their", "this", "that", "these", "those", "there", "here", "just", "really", "very", "please", "help", "want", "need", "like", "get", "make", "let", "okay", "ok", "hey", "hi", "hello", "dear", "thanks", "thank", "what", "why", "how", "when", "where", "who", "which"]);
+  function isGreeting(t) {
+    const s2 = String(t || "").toLowerCase().replace(/[^a-z\s']/g, " ").replace(/\s+/g, " ").trim();
+    return /^(hi|hey|hello|yo|sup|greetings|good (morning|afternoon|evening|night)|how are you|how's it going|what's up|thanks|thank you|ok|okay|cool|nice|great)( (there|everyone|all|friend|guys|good|sir|madam|bro|dude|again|thanks|thank you))?( (how are you|how's it going|what's up))?$/.test(s2);
+  }
+  function looksLikeTopic(t) {
+    const s2 = String(t || "").trim().replace(/\s+/g, " ");
+    if (s2.length < 6) return false;
+    if (!/[A-Za-z]{3,}/.test(s2)) return false;
+    if (/(.)\1{3,}/.test(s2)) return false;
+    return true;
+  }
+  function makeTitle(text) {
+    const t = String(text || "").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().replace(/^[\s"'`*_#>\-]+/, "").replace(/[\s"'`*_#]+$/, "");
+    if (!t) return "";
+    const words = t.split(" ");
+    const kept = [];
+    for (const w of words) {
+      const clean = w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      if (!clean) continue;
+      if (TITLE_STOP.has(clean.toLowerCase())) continue;
+      if (clean.length < 2 && !/^\d+$/.test(clean)) continue;
+      kept.push(clean);
+      if (kept.length >= 6) break;
+    }
+    let out = kept.join(" ") || words.slice(0, 6).join(" ");
+    if (out.length > 42) {
+      const cut = out.slice(0, 42);
+      const sp = cut.lastIndexOf(" ");
+      out = (sp > 12 ? cut.slice(0, sp) : cut).replace(/[\s,;:.!?-]+$/, "") + "…";
+    }
+    return out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  function setHeaderTitle(t) {
+    htitle.textContent = (t && t !== APP) ? t : APP;
+    htitle.title = htitle.textContent;
+  }
+  function newConversation() {
+    if (histView.classList.contains("open")) closeHistory();
+    curSession = null;
+    log.innerHTML = "";
+    log.style.display = "";
+    setHeaderTitle(APP);
+    addAiTurn("Hi! What would you like to design or work on?", false);
+    p.focus();
+  }
+  function openHistory() {
+    qpopMenu.classList.remove("open");
+    histList.innerHTML = "";
+    const all = sessions.slice().sort((a, b) => b.ts - a.ts);
+    if (!all.length) {
+      histList.appendChild(el("div", "hempty", "No conversations yet."));
+    } else {
+      for (const s of all) {
+        const item = el("button", "hitem");
+        item.appendChild(el("div", "ht", s.title || "New conversation"));
+        item.appendChild(el("div", "hd", new Date(s.ts).toLocaleString() + " · " + s.turns.length + " msg"));
+        item.onclick = () => loadSession(s.id);
+        histList.appendChild(item);
+      }
+    }
+    log.style.display = "none";
+    histView.classList.add("open");
+  }
+  function closeHistory() {
+    histView.classList.remove("open");
+    log.style.display = "";
+  }
+  function loadSession(id) {
+    const s = sessions.find((x) => x.id === id);
+    if (!s) { closeHistory(); return; }
+    curSession = s;
+    closeHistory();
+    log.innerHTML = "";
+    for (const t of s.turns) {
+      if (t.who === "u") addUserTurn(t.text, false);
+      else addAiTurn(t.text, false);
+    }
+    setHeaderTitle(s.title || APP);
+    scrollToBottom(false); // opening a conversation: land on the latest
+    p.focus();
+  }
+
+  /* ---------- markdown renderer (GFM subset, no external deps) ---------- */
+  function mdEscapeText(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function mdSafeUrl(u) {
+    const t = String(u || "").replace(/&amp;/g, "&").trim();
+    return /^(https?:\/\/|data:image\/)/i.test(t) ? t : null;
+  }
+  function mdInline(s) {
+    s = mdEscapeText(s);
+    s = s.replace(/`([^`]+)`/g, function (_, c) { return "<code>" + c + "</code>"; });
+    s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+      const u = mdSafeUrl(url); return u ? '<img src="' + u + '" alt="' + alt + '" loading="lazy">' : m;
+    });
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, t, url) {
+      const u = mdSafeUrl(url); return u ? '<a href="' + u + '" target="_blank" rel="noreferrer noopener">' + t + "</a>" : m;
+    });
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;])/g, function (m, pre, url) {
+      const u = mdSafeUrl(url); return u ? pre + '<a href="' + u + '" target="_blank" rel="noreferrer noopener">' + url + "</a>" : m;
+    });
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:!?)]|$)/g, "$1<em>$2</em>");
+    s = s.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
+    return s;
+  }
+  function mdCells(row) {
+    const cells = row.split("|");
+    if (cells.length && cells[0].trim() === "") cells.shift();
+    if (cells.length && cells[cells.length - 1].trim() === "") cells.pop();
+    return cells.map(function (c) { return c.trim(); });
+  }
+  function mdTable(lines, i) {
+    const head = mdCells(lines[i]);
+    const seps = mdCells(lines[i + 1]);
+    const align = seps.map(function (c) {
+      if (/^:-+:$/.test(c)) return ' style="text-align:center"';
+      if (/^:-+$/.test(c)) return "";
+      if (/^-+:$/.test(c)) return ' style="text-align:right"';
+      return "";
+    });
+    let html = '<table><thead><tr>';
+    head.forEach(function (c, k) { html += "<th" + (align[k] || "") + ">" + mdInline(c) + "</th>"; });
+    html += "</tr></thead><tbody>";
+    i += 2;
+    while (i < lines.length) {
+      const l = lines[i];
+      if (!l.trim() || l.indexOf("|") < 0 || /^\s*```/.test(l)) break;
+      html += "<tr>";
+      mdCells(l).forEach(function (c, k) { html += "<td" + (align[k] || "") + ">" + mdInline(c) + "</td>"; });
+      html += "</tr>";
+      i++;
+    }
+    html += "</tbody></table>";
+    return { html: html, next: i };
+  }
+  function mdRender(src) {
+    const lines = String(src || "").replace(/\r\n?/g, "\n").split("\n");
+    const out = [];
+    let para = [];
+    function flush() {
+      if (para.length) { out.push("<p>" + para.map(mdInline).join("<br>") + "</p>"); para = []; }
+    }
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const fence = /^\s*```(.*)$/.exec(line);
+      if (fence) {
+        flush();
+        const buf = [];
+        i++;
+        while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
+        i++;
+        const code = buf.join("\n");
+        out.push('<pre data-code="' + mdEscapeText(code) + '"><code>' + mdEscapeText(code) + "</code></pre>");
+        continue;
+      }
+      const next = lines[i + 1] || "";
+      if (line.indexOf("|") >= 0 && /^\s*\|?[\s:|-]*-[\s:|-]*$/.test(next) && next.indexOf("|") >= 0) {
+        flush();
+        const t = mdTable(lines, i);
+        out.push(t.html); i = t.next;
+        continue;
+      }
+      const h = /^(#{1,6})\s+(.*)$/.exec(line);
+      if (h) {
+        flush();
+        const lv = Math.min(4, h[1].length);
+        out.push("<h" + lv + ">" + mdInline(h[2]) + "</h" + lv + ">");
+        i++;
+        continue;
+      }
+      if (/^\s*[-*]{3,}\s*$/.test(line) || /^\s*_{3,}\s*$/.test(line)) {
+        flush(); out.push("<hr>"); i++; continue;
+      }
+      if (/^\s*>/.test(line)) {
+        flush();
+        const buf = [];
+        while (i < lines.length && /^\s*>/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, "")); i++; }
+        out.push("<blockquote><p>" + buf.map(mdInline).join("<br>") + "</p></blockquote>");
+        continue;
+      }
+      const lm = /^(\s*)([-+*]|\d+[.)])\s+(.*)$/.exec(line);
+      if (lm) {
+        flush();
+        let html = "";
+        const stack = []; // open lists: { ord, open }
+        function closeLi() {
+          if (stack.length && stack[stack.length - 1].open) { html += "</li>"; stack[stack.length - 1].open = false; }
+        }
+        function closeTo(n) {
+          while (stack.length > n) {
+            const t = stack.pop();
+            if (t.open) html += "</li>";
+            html += t.ord ? "</ol>" : "</ul>";
+          }
+        }
+        while (i < lines.length) {
+          const m2 = /^(\s*)([-+*]|\d+[.)])\s+(.*)$/.exec(lines[i]);
+          if (!m2) break;
+          const dep = Math.min(2, Math.floor(m2[1].replace(/\t/g, "  ").length / 2));
+          const ord = /^\d/.test(m2[2]);
+          let txt = m2[3], task = null;
+          const tm = /^\[([ xX])\]\s+(.*)$/.exec(txt);
+          if (tm) { task = tm[1].toLowerCase() === "x"; txt = tm[2]; }
+          if (dep + 1 <= stack.length) closeTo(dep + 1);
+          if (stack.length === dep + 1 && stack[stack.length - 1].ord !== ord) closeTo(dep);
+          while (stack.length < dep + 1) { stack.push({ ord: ord, open: false }); html += ord ? "<ol>" : "<ul>"; }
+          closeLi();
+          html += "<li>" + (task === null ? "" : '<input type="checkbox" disabled' + (task ? " checked" : "") + "> ") + mdInline(txt);
+          stack[stack.length - 1].open = true;
+          i++;
+        }
+        closeTo(0);
+        out.push(html);
+        continue;
+      }
+      if (!line.trim()) { flush(); i++; continue; }
+      para.push(line);
+      i++;
+    }
+    flush();
+    return out.join("");
+  }
+
+  function addUserTurn(text, record) {
+    if (record !== false) recordTurn("u", text);
+    else if (!htitle.dataset.keep && curSession) setHeaderTitle(curSession.title || APP);
+    const row = el("div", "turn-user");
+    row.appendChild(el("div", "bubble", text));
+    row.appendChild(el("div", "avatar", "U"));
+    log.appendChild(row);
+    const uacts = el("div", "msg-actions uacts");
+    const cp = icon("copy");
+    cp.title = "Copy";
+    cp.onclick = () => {
+      const done = () => sysMsg("Copied to clipboard.");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+      } else fallbackCopy(text, done);
+    };
+    uacts.appendChild(cp);
+    log.appendChild(uacts);
+    scrollToBottom(false); // the user just acted - always follow, no pill
+    jumpPill(false);
+  }
+
+  function addUserImage(dataUrl) {
+    recordTurn("u", "[image]");
+    const row = el("div", "turn-user");
+    const b = el("div", "bubble");
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    b.appendChild(img);
+    row.appendChild(b);
+    row.appendChild(el("div", "avatar", "U"));
+    log.appendChild(row);
+    scrollToBottom(false); // user just attached - always follow
+    jumpPill(false);
+  }
+
+  function icon(name) {
+    const b = el("button", "mact");
+    b.innerHTML = ICONS[name];
+    return b;
+  }
+
+  function addAiTurn(text, record, modelName) {
+    if (record !== false) recordTurn("a", text);
+    const near = nearBottom(); // capture before appending
+    const t = el("div", "turn-ai md");
+    t.innerHTML = mdRender(text);
+    mdDecorate(t);
+    log.appendChild(t);
+    const acts = el("div", "msg-actions");
+    const cp = icon("copy");
+    cp.title = "Copy";
+    cp.onclick = () => {
+      const done = () => sysMsg("Copied to clipboard.");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+      } else fallbackCopy(text, done);
+    };
+    const rt = icon("retry");
+    rt.title = "Retry - resend the same prompt for a new answer";
+    rt.onclick = () => retryTurn(acts);
+    const sub = modelName ? el("span", "msub", MODEL_NAMES[modelName] || humanize(modelName)) : null;
+    const sp = el("span", "spacer");
+    const info = el("button", "mact");
+    info.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5" stroke-linecap="round"/><circle cx="12" cy="8" r=".8" fill="currentColor"/></svg>';
+    info.title = "Why am I seeing this?";
+    info.style.width = "15px"; info.style.height = "15px";
+    info.onclick = () => sysMsg("Runs on the free pool (usefree.space) — separate from your Figma AI credits.");
+    if (sub) { acts.append(cp, rt, sub, sp, info); } else { acts.append(cp, rt, sp, info); }
+    log.appendChild(acts);
+    // reply just landed: reveal its start if the user was following; otherwise leave them be
+    if (near) revealNode(t); else jumpPill(true);
+  }
+
+  /* retry: drop the old answer (and anything after it), re-ask the same prompt.
+     Agent actions are NOT re-executed - the prompt is only resent for a fresh answer. */
+  function retryTurn(acts) {
+    if (sending) return;
+    const ai = acts.previousElementSibling;
+    if (!ai || !ai.classList.contains("turn-ai")) return;
+    let u = ai.previousElementSibling;
+    while (u && !u.classList.contains("turn-user")) u = u.previousElementSibling;
+    const b = u && u.querySelector(".bubble");
+    const text = b ? (b.textContent || "").trim() : "";
+    if (!text) return;
+    // truncate the log back to the user's message
+    while (log.lastChild && log.lastChild !== u) log.removeChild(log.lastChild);
+    // keep the session record aligned with the visible log
+    if (curSession) {
+      const n = k0(log, u);
+      let seen = 0, cut = -1;
+      for (let k = 0; k < curSession.turns.length; k++) {
+        if (curSession.turns[k].who === "u") { seen++; if (seen === n) { cut = k; break; } }
+      }
+      if (cut >= 0) curSession.turns = curSession.turns.slice(0, cut + 1);
+      pushSessions(sessions);
+    }
+    busy(true);
+    showTyping();
+    parent.postMessage({ pluginMessage: { type: "chat", text: text, mode: "ask", web: webOn, model: selModel, effort: currentEffort(), retry: true } }, "*");
+  }
+  function k0(log, u) {
+    let n = 0;
+    for (const ch of log.children) { if (ch.classList.contains("turn-user")) { n++; if (ch === u) return n; } }
+    return n;
+  }
+
+  function fallbackCopy(text, done) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { sysMsg("Copy blocked in this environment."); }
+    ta.remove();
+  }
+
+  function mdDecorate(node) {
+    // images: hosts outside networkAccess get blocked -> fall back to a link chip
+    node.querySelectorAll("img").forEach((im) => {
+      if (im.dataset.mdDone) return;
+      im.dataset.mdDone = "1";
+      im.onerror = () => {
+        const a = document.createElement("a");
+        a.href = im.src; a.target = "_blank"; a.rel = "noreferrer noopener";
+        a.className = "imgfall";
+        a.textContent = "Image - open " + (im.alt || im.src.slice(0, 60));
+        im.replaceWith(a);
+      };
+    });
+    // code blocks: copy button fed by the raw code
+    node.querySelectorAll("pre[data-code]").forEach((pre) => {
+      if (pre.dataset.btnDone) return;
+      pre.dataset.btnDone = "1";
+      const raw = pre.getAttribute("data-code") || pre.textContent;
+      const b = el("button", "cbtn cbtn-code");
+      b.title = "Copy code";
+      b.innerHTML = ICONS.copy;
+      b.onclick = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(raw).then(() => sysMsg("Code copied."), () => {})
+        } else sysMsg("Copy blocked in this environment.");
+      };
+      pre.appendChild(b);
+    });
+  }
+
+  /* ---------- agent tool cards ---------- */
+  const TOOL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0 6.03 6.03l-6.61 6.61a2.12 2.12 0 0 1-3-3l6.61-6.61z"/><path d="m18 2 4 4"/><path d="m2 18 4 4"/></svg>';
+  function addToolCard(title, text) {
+    const card = el("div", "toolcard");
+    const head = el("div", "toolhead");
+    head.innerHTML = TOOL_SVG;
+    head.appendChild(el("span", null, title || "Agent action"));
+    card.appendChild(head);
+    if (text) {
+      const b = el("div", "toolout md");
+      b.innerHTML = mdRender(text);
+      mdDecorate(b);
+      card.appendChild(b);
+    }
+    const near = nearBottom();
+    log.appendChild(card);
+    if (typingEl) log.appendChild(typingEl); // keep the typing indicator under the card
+    if (near) scrollToBottom(true); else jumpPill(true);
+  }
+
+  /* ---------- composer ---------- */
+  function autosize() {
+    p.style.height = "21px";
+    p.style.height = Math.min(p.scrollHeight, 99) + "px";
+    refreshSend();
+  }
+  function refreshSend() { sendBtn.disabled = !p.value.trim() || sending; }
+  p.addEventListener("input", autosize);
+  p.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+
+  let sending = false;
+  function busy(on) {
+    sending = on;
+    sendBtn.disabled = on || !p.value.trim();
+    moreMenu.classList.remove("open");
+    modelMenu.classList.remove("open");
+    qpopMenu.classList.remove("open");
+    if (minimized) document.getElementById("mstat").textContent = on ? "working…" : "";
+  }
+  function thinkingText(sec) {
+    const lab = sec < 8 ? "Thinking…" : sec < 25 ? "Still thinking…" : "Still working — this one is taking a while";
+    return sec >= 3 ? lab + " " + sec + "s" : lab;
+  }
+  function processingText(sec) {
+    const lab = sec < 8 ? "Processing…" : sec < 25 ? "Still processing…" : "Still working — the cutout is taking a while";
+    return sec >= 3 ? lab + " " + sec + "s" : lab;
+  }
+  function showTyping(processing) {
+    const labFn = processing ? processingText : thinkingText;
+    typingEl = el("div", "thinking");
+    typingEl.appendChild(el("span", "spin"));
+    const lab = el("span", "thlab", labFn(0));
+    typingEl.appendChild(lab);
+    const t0 = Date.now();
+    typingTick = setInterval(function () {
+      lab.textContent = labFn(Math.floor((Date.now() - t0) / 1000));
+    }, 1000);
+    const near = nearBottom();
+    log.appendChild(typingEl);
+    if (near) scrollToBottom(false); else jumpPill(true);
+  }
+  function clearTyping() {
+    if (typingTick) { clearInterval(typingTick); typingTick = null; }
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+  }
+  function post(msg, processing) {
+    busy(true);
+    showTyping(processing);
+    parent.postMessage({ pluginMessage: msg }, "*");
+  }
+
+  function doSend() {
+    const text = p.value.trim();
+    if (!text || sending) return;
+    p.value = "";
+    autosize();
+    addUserTurn(text);
+    post({ type: "chat", text: text, mode: "ask", web: webOn, model: selModel, effort: currentEffort() });
+  }
+  sendBtn.onclick = doSend;
+
+  /* ---------- plus = upload image; brand button = remove background ---------- */
+  let lastImage = null; // { data, kb }
+  document.getElementById("plusBottom").onclick = () => imgInput.click();
+  imgInput.onchange = () => {
+    const f = imgInput.files && imgInput.files[0];
+    imgInput.value = "";
+    if (!f || !f.type.startsWith("image/")) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const url = String(fr.result);
+      addUserImage(url);
+      const im = new Image();
+      im.onload = () => {
+        const c = document.createElement("canvas");
+        const k = Math.min(1, 512 / Math.max(im.width, im.height));
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        const small = c.toDataURL("image/png");
+        lastImage = { data: small, kb: Math.round(small.length / 1024) };
+        sysMsg("Image attached (" + lastImage.kb + " KB).");
+        if (!sending) parent.postMessage({ pluginMessage: { type: "image", data: small, kb: lastImage.kb } }, "*");
+      };
+      im.src = url;
+    };
+    fr.readAsDataURL(f);
+  };
+  document.getElementById("rmbgBtn").onclick = () => {
+    if (sending) return;
+    if (!lastImage) {
+      sysMsg("To use the remove bg tool.\nStep 1. Click the \"+\".\nStep 2. Select and upload the image.\nStep 3. Come back and click this icon. That's all.");
+      return;
+    }
+    bgSpinner(true); // status-bar counter (shows in minimized mode too)
+    post({ type: "rmbg", data: lastImage.data, kb: lastImage.kb }, true); // in-log spinner + timer, exactly like chat's thinking row
+  };
+
+  /* ---------- remove-bg progress: spinner + elapsed timer in the status bar ---------- */
+  let bgTimer = null;
+  let bgStart = 0;
+  function bgSpinner(on) {
+    const el = document.getElementById("mstat");
+    if (!el) return;
+    if (on) {
+      bgStart = Date.now();
+      clearInterval(bgTimer);
+      el.style.display = "";
+      el.textContent = "⟳ 0s";
+      bgTimer = setInterval(() => {
+        const s = Math.round((Date.now() - bgStart) / 1000);
+        el.textContent = "⟳ " + s + "s";
+      }, 1000);
+    } else {
+      clearInterval(bgTimer);
+      el.style.display = "none";
+      el.textContent = "";
+    }
+  }
+
+  /* ---------- web search toggle ---------- */
+  globeBtn.onclick = () => {
+    webOn = !webOn;
+    globeBtn.classList.toggle("on", webOn);
+    globeBtn.title = "Web search (toggle) — " + (webOn ? "ON" : "OFF");
+    sysMsg("Web search " + (webOn ? "enabled for your next messages." : "disabled."));
+  };
+
+  /* ---------- voice input: device microphone ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recog = null;
+  async function startVoice() {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((tr) => tr.stop());
+      } catch (e) {
+        if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
+          sysMsg("Microphone access is blocked at the app level here — Figma's plugin window doesn't pass mic permissions through.");
+          return;
+        }
+        if (e && e.name === "NotFoundError") { sysMsg("No microphone found on this device."); return; }
+      }
+    }
+    if (!SR) { sysMsg("Speech recognition isn't available in this Figma build — typing still works."); return; }
+    if (recog) { recog.stop(); return; }
+    try {
+      recog = new SR();
+      recog.lang = navigator.language || "en-US";
+      recog.interimResults = true;
+      recog.continuous = false;
+      let base = p.value;
+      recog.onstart = () => micBtn.classList.add("listening");
+      recog.onresult = (e) => {
+        let t = "";
+        for (const r of e.results) t += r[0].transcript;
+        p.value = base + (base && t ? " " : "") + t;
+        autosize();
+      };
+      recog.onerror = (e) => {
+        sysMsg(e.error === "not-allowed"
+          ? "Microphone permission denied in this window. Allow mic access for Figma in your OS/browser settings, then try again."
+          : "Mic error: " + e.error);
+        micBtn.classList.remove("listening");
+      };
+      recog.onend = () => { micBtn.classList.remove("listening"); recog = null; };
+      recog.start();
+    } catch (e) {
+      sysMsg("Could not start the microphone: " + (e.message || e));
+      recog = null;
+    }
+  }
+  micBtn.onclick = startVoice;
+
+  /* ---------- model selector (list comes from the pool's catalog, never hardcoded) ---------- */
+  let selModel = "auto";
+  try { selModel = localStorage.getItem("faa-model") || "auto"; } catch (e) {}
+  let MODELS_CATALOG = [];
+  let AUTO_MODEL_ID = "";
+  const MODEL_NAMES = {};
+  setModelLabel("Auto");
+  function setModelLabel(t) { modelLabel.textContent = t; }
+  function humanize(id) {
+    if (typeof id !== "string") return String(id);
+    return id.replace(/[-_]+/g, " ").replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+  }
+  function findModel(id) {
+    for (const m of MODELS_CATALOG) { if (m && m.id === id) return m; }
+    return null;
+  }
+  function currentEffort() {
+    const id = selModel === "auto" ? AUTO_MODEL_ID : selModel;
+    const m = findModel(id);
+    if (!m || !Array.isArray(m.effort) || !m.effort.length) return "";
+    try { return localStorage.getItem("faa-eff:" + id) || m.effortDefault || ""; } catch (e) { return m.effortDefault || ""; }
+  }
+  // compact horizontal strip rendered directly UNDER its own model row, so it always reads as belonging to that model
+  function effortStrip(m, modelId) {
+    let cur = "";
+    try { cur = localStorage.getItem("faa-eff:" + modelId) || ""; } catch (e) {}
+    if (m.effort.indexOf(cur) < 0) cur = m.effortDefault || "";
+    const strip = el("div", "effort");
+    for (const lv of m.effort) {
+      const text = typeof lv === "string" && lv ? lv.charAt(0).toUpperCase() + lv.slice(1) : String(lv);
+      const b = el("button", cur === lv ? "on" : "", text);
+      if (lv === "instant") b.title = "No extra thinking. Fastest.";
+      b.onclick = () => {
+        try { localStorage.setItem("faa-eff:" + modelId, lv); } catch (err) {}
+        for (const x of strip.querySelectorAll("button")) x.classList.remove("on");
+        b.classList.add("on");
+        sysMsg((m.name || modelId) + " thinking: " + (text === "Instant" ? "off - fastest" : text));
+      };
+      strip.appendChild(b);
+    }
+    return strip;
+  }
+  // one bg region per model: name row + (optional) horizontal thinking row inside
+  function modelGroup(m) {
+    const g = el("div", "mgroup");
+    const id = m ? m.id : "auto";
+    const isOn = m ? m.id === selModel : selModel === "auto";
+    if (isOn) g.classList.add("on");
+    if (m && m.discontinued) g.classList.add("dis");
+    const b = el("button", "mrowname" + (isOn ? " on" : ""), m ? (m.name || humanize(m.id)) : "Auto");
+    b.dataset.model = id;
+    b.onclick = pickModel;
+    if (m) {
+      if (m.isNew) {
+        const nb = el("span", "newb", "NEW");
+        b.appendChild(document.createTextNode(" ")); // keep the name readable before the badge
+        b.appendChild(nb);
+      }
+      if (m.discontinued) b.title = "Discontinued - keep an older gem or move on.";
+    }
+    g.appendChild(b);
+    if (m && Array.isArray(m.effort) && m.effort.length) g.appendChild(effortStrip(m, m.id));
+    return g;
+  }
+  function buildModelMenu(models) {
+    MODELS_CATALOG = models || [];
+    for (const m of MODELS_CATALOG) { if (m && m.id) MODEL_NAMES[m.id] = m.name || m.id; }
+    modelMenu.innerHTML = "";
+    modelMenu.appendChild(el("div", "note", "Model"));
+    modelMenu.appendChild(modelGroup(null)); // Auto
+    for (const m of (models || [])) modelMenu.appendChild(modelGroup(m));
+  }
+  function pickModel(e) {
+    const b = e.currentTarget;
+    const id = b.dataset.model || "auto";
+    selModel = id;
+    setModelLabel(id === "auto" ? "Auto" : b.textContent);
+    try { localStorage.setItem("faa-model", selModel); } catch (err) {}
+    // keep the menu open so the user can pick a thinking level right after; it closes on outside click or on the model button again
+    for (const g of modelMenu.querySelectorAll(".mgroup")) g.classList.remove("on");
+    const grp = b.closest ? b.closest(".mgroup") : null;
+    if (grp) grp.classList.add("on");
+    for (const x of modelMenu.querySelectorAll("button.mrowname")) x.classList.remove("on");
+    b.classList.add("on");
+    sysMsg("Model: " + (id === "auto" ? "Auto" : b.textContent));
+  }
+  buildModelMenu([]);
+  modelBtn.onclick = () => {
+    toggleMenu(modelMenu);
+    if (modelMenu.classList.contains("open") && !catalogLoaded) {
+      parent.postMessage({ pluginMessage: { type: "catalog-req" } }, "*"); // populate from API
+    }
+  };
+
+  /* ---------- quota pill ---------- */
+  let quota = null;
+  function updateQuota() {
+    if (!quota || typeof quota.left !== "number") { qpillTxt.textContent = "Free tokens"; qpill.classList.remove("out"); return; }
+    qpillTxt.textContent = quota.left <= 0 ? "used up" : fmtNum(quota.left) + " tokens left";
+    qpill.classList.toggle("out", quota.left <= 0);
+  }
+  qpill.onclick = () => {
+    toggleMenu(qpopMenu);
+    if (!qpopMenu.classList.contains("open")) return;
+    qpopMenu.innerHTML = "";
+    qpopMenu.appendChild(el("div", "note", "Free tokens"));
+    const rows = [
+      ["Left now", quota && typeof quota.left === "number" ? fmtNum(quota.left) : "…checking"],
+      ["Limit", quota && typeof quota.limit === "number" ? fmtNum(quota.limit) : "—"],
+      ["Refill", quota && typeof quota.reset === "number" ? "in " + quota.reset + " day" + (quota.reset === 1 ? "" : "s") : "—"],
+    ];
+    for (const r of rows) {
+      const row = el("div", "qrow");
+      row.appendChild(el("span", null, r[0]));
+      row.appendChild(el("span", "qv", r[1]));
+      qpopMenu.appendChild(row);
+    }
+    const go = el("button", null, "Get more at usefree.space");
+    go.onclick = () => { qpopMenu.classList.remove("open"); window.open("https://usefree.space", "_blank"); };
+    qpopMenu.appendChild(go);
+  };
+
+  /* ---------- minimize / restore ---------- */
+  let minimized = false;
+  const mstat = document.getElementById("mstat");
+  function setMini(on) {
+    minimized = on;
+    document.body.classList.toggle("mini", on);
+    mstat.textContent = on && sending ? "working…" : "";
+  }
+  document.getElementById("minBtn").onclick = () => {
+    setMini(true);
+    try { localStorage.setItem("faa-min", "1"); } catch (e) {}
+    parent.postMessage({ pluginMessage: { type: "ui-min", value: true } }, "*");
+  };
+  document.getElementById("ext").onclick = () => window.open("https://usefree.space", "_blank");
+  document.getElementById("restore").onclick = () => {
+    setMini(false);
+    try { localStorage.setItem("faa-min", "0"); } catch (e) {}
+    parent.postMessage({ pluginMessage: { type: "ui-min", value: false } }, "*");
+  };
+
+  /* ---------- menus ---------- */
+  let catalogLoaded = false;
+  document.getElementById("more").onclick = () => toggleMenu(moreMenu);
+  function toggleMenu(m) {
+    const open = m.classList.contains("open");
+    [moreMenu, modelMenu, qpopMenu].forEach((x) => x.classList.remove("open"));
+    if (!open) m.classList.add("open");
+  }
+  document.addEventListener("click", (e) => {
+    for (const [menuId, ownerSel] of [["moreMenu", "#more"], ["modelMenu", "#modelBtn"], ["qpopMenu", "#qpill"]]) {
+      const m = document.getElementById(menuId);
+      if (!m.classList.contains("open")) continue;
+      if (!m.contains(e.target) && !e.target.closest(ownerSel)) m.classList.remove("open");
+    }
+  });
+  function exportChat() {
+    if (!curSession || !curSession.turns.length) { sysMsg("Nothing to export yet - this chat is empty."); return; }
+    let md = "# " + (curSession.title || APP) + "\n\nExported from " + APP + " - " + new Date(curSession.ts).toLocaleString() + "\n\n";
+    for (const t of curSession.turns) {
+      md += (t.who === "u" ? "**You:** " : "**AI:** ") + String(t.text || "") + "\n\n";
+    }
+    md += "---\nGenerated by " + APP + " (free tokens via usefree.space)\n";
+    const name = (curSession.title || "conversation").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase().slice(0, 48) || "conversation";
+    // 1) clipboard copy (always works in the plugin window)
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(md).catch(function () {});
+    else fallbackCopy(md, function () {});
+    // 2) real .md file download - Figma's plugin window may block it, so we say where it went either way
+    try {
+      const url = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = name + ".md";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      sysMsg("Chat exported - " + name + ".md went to your Downloads folder. A plain-text copy was also put on your clipboard as a backup.");
+    } catch (e) {
+      sysMsg("Figma blocked the file download here, but the full transcript is on your clipboard. Paste it into any text editor to save it as a .md file.");
+    }
+  }
+  document.getElementById("hnew").onclick = newConversation;
+  for (const b of moreMenu.querySelectorAll("button[data-more]")) {
+    b.onclick = () => {
+      moreMenu.classList.remove("open");
+      const m = b.dataset.more;
+      if (m === "export") exportChat();
+      else if (m === "history") openHistory();
+    };
+  }
+
+  /* ---------- incoming ---------- */
+  window.onmessage = (e) => {
+    const msg = e.data.pluginMessage;
+    if (!msg) return;
+    if (msg.type === "ui-state") { setMini(!!msg.minimized); return; }
+    if (msg.type === "sess-set") {
+      if (Array.isArray(msg.list)) sessions = msg.list;
+      return;
+    }
+    if (msg.type === "catalog") {
+      catalogLoaded = true;
+      AUTO_MODEL_ID = typeof msg.auto === "string" ? msg.auto : AUTO_MODEL_ID;
+      buildModelMenu(msg.models || []);
+      return;
+    }
+    if (msg.type === "quota") {
+      quota = msg;
+      updateQuota();
+      return;
+    }
+    if (msg.type === "usage") {
+      // live countdown: burn this turn's tokens off the pill instantly, then the quota refetch re-syncs
+      if (quota && typeof quota.left === "number" && typeof msg.tokens === "number") {
+        quota.left = Math.max(0, quota.left - msg.tokens);
+        updateQuota();
+      }
+      return;
+    }
+    busy(false);
+    clearTyping();
+    if (msg.type === "reply") { addAiTurn(msg.text, true, msg.model); p.focus(); }
+    else if (msg.type === "sys") sysMsg(msg.text);
+    else if (msg.type === "tool") addToolCard(msg.title, msg.text);
+    else if (msg.type === "hygiene") renderHygiene(msg);
+    else if (msg.type === "rmbg-done") bgSpinner(false);
+  };
+
+  function renderHygiene(r) {
+    sysMsg("PAGE STATS — " + r.stats);
+    const card = el("div", "hcard");
+    if (r.palette && r.palette.length) {
+      const chipsRow = el("div", "chips");
+      const lbl = el("span", null, "Working palette: ");
+      lbl.style.color = "#9b9b9b";
+      chipsRow.appendChild(lbl);
+      r.palette.forEach((hex) => {
+        const c = el("span", "chip");
+        c.style.background = hex;
+        c.title = hex;
+        chipsRow.appendChild(c);
+      });
+      const hx = el("span", null, " " + r.palette.join(" "));
+      hx.style.color = "#9b9b9b";
+      chipsRow.appendChild(hx);
+      card.appendChild(chipsRow);
+    }
+    if (r.stray && r.stray.length) {
+      const stray = el("div", "chips");
+      const lbl = el("span", null, "Off-palette one-offs: ");
+      lbl.style.color = "#9b9b9b";
+      stray.appendChild(lbl);
+      r.stray.forEach((hex) => {
+        const c = el("span", "chip");
+        c.style.background = hex;
+        c.title = hex;
+        stray.appendChild(c);
+      });
+      card.appendChild(stray);
+    }
+    const hasFixes = r.unnamed || r.singleGroups;
+    if (hasFixes) {
+      if (r.unnamed) {
+        const row = el("div", "fixline");
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.id = "fxRename"; cb.checked = true;
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode("Rename " + r.unnamed + " untitled layer(s) semantically"));
+        card.appendChild(row);
+      }
+      if (r.singleGroups) {
+        const row = el("div", "fixline");
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.id = "fxFlatten"; cb.checked = true;
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode("Flatten " + r.singleGroups + " single-child wrapper group(s)"));
+        card.appendChild(row);
+      }
+      const apply = el("button", "apply", "Apply checked fixes");
+      apply.onclick = () => {
+        const rename = document.getElementById("fxRename");
+        const flatten = document.getElementById("fxFlatten");
+        sysMsg("Apply fixes");
+        post({ type: "fixes", rename: !!(rename && rename.checked), flatten: !!(flatten && flatten.checked) });
+        card.remove();
+      };
+      card.appendChild(apply);
+    } else {
+      card.appendChild(el("div", null, "Nothing to fix on this page."));
+    }
+    log.appendChild(card);
+    { const near = nearBottom(); if (near) scrollToBottom(true); else jumpPill(true); }
+  }
+
+  /* ---------- greeting ---------- */
+  addAiTurn("Hi! What would you like to design or work on?", false);
+  sendBtn.disabled = true;
+
+  /* ---------- boot: identity + restored window size ---------- */
+  (function bootFromUI() {
+    let did = null, mini = false;
+    try { did = localStorage.getItem("faa-device"); } catch (e) {}
+    if (!did) {
+      did = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : ("d" + Date.now().toString(36) + Math.random().toString(36).slice(2));
+      try { localStorage.setItem("faa-device", did); } catch (e) {}
+    }
+    try { mini = localStorage.getItem("faa-min") === "1"; } catch (e) {}
+    if (mini) setMini(true);
+    parent.postMessage({ pluginMessage: { type: "boot", deviceId: did, minimized: mini } }, "*");
+  })();
+</script>
+</body>
+</html>
