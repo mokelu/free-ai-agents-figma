@@ -168,7 +168,7 @@ async function handleRmbg(msg) {
 async function webCall(kind, value) {
   const res = await fetch(POOL + (kind === "read" ? "/web/read" : "/web/search"), {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Device-Id": deviceId() },
+    headers: { "Content-Type": "application/json", "X-Device-Id": deviceId(), "X-App": APP_META.app, "X-Platform": APP_META.platform, "X-Version": APP_META.version },
     body: JSON.stringify(kind === "read"
       ? { url: value, client: clientMeta({ tool: "web.read" }) }
       : { query: value, client: clientMeta({ tool: "web.search" }) }),
@@ -260,7 +260,7 @@ async function fetchCatalog(force) {
 
 async function fetchQuota() {
   try {
-    const res = await fetch(POOL + "/quota/status?app=" + encodeURIComponent(APP_META.app) + "&platform=" + APP_META.platform + "&v=" + encodeURIComponent(APP_META.version), { headers: { "X-Device-Id": deviceId() } });
+    const res = await fetch(POOL + "/quota/status?app=" + encodeURIComponent(APP_META.app) + "&platform=" + APP_META.platform + "&v=" + encodeURIComponent(APP_META.version), { headers: { "X-Device-Id": deviceId(), "X-App": APP_META.app } });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const j = await res.json();
     if (typeof j.device_tokens_left !== "number") throw new Error("no count");
